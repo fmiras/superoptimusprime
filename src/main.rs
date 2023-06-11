@@ -2,7 +2,7 @@ mod cpu;
 mod iters;
 mod operations;
 mod parser;
-mod superoptimizer;
+mod superoptimizer_threads;
 
 fn main() {
     let assembly = "LOAD 3
@@ -29,7 +29,7 @@ LOAD 3
     // measure execution duration
     let start = std::time::Instant::now();
     let superoptimized_program =
-        superoptimizer::superoptimize(4, max_memory_cells, 5, &target_state);
+        superoptimizer_threads::superoptimize(4, max_memory_cells, 5, &target_state);
     let end = std::time::Instant::now();
 
     println!("⏱️ Execution duration: {:?}", end - start);

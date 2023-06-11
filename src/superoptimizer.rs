@@ -1,12 +1,15 @@
 use strum::IntoEnumIterator;
 
-use crate::{cpu::Instruction, iters::product};
+use crate::{
+    cpu::{Instruction, CPU},
+    iters::product,
+};
 
 pub fn generate_and_search_programs(
     max_instructions_length: usize,
     max_memory_cells: usize,
     max_value: usize,
-    mut tester: impl FnMut(&Vec<Instruction>) -> bool,
+    tester: impl Fn(&Vec<Instruction>) -> bool,
 ) -> Option<Vec<Instruction>> {
     let mut count = 0;
 
@@ -74,9 +77,8 @@ pub fn superoptimize(
     max_value: usize,
     target_state: &Vec<usize>,
 ) -> Option<Vec<Instruction>> {
-    let mut cpu = crate::cpu::CPU::new(max_memory_cells);
-
     let tester = |program: &Vec<Instruction>| {
+        let mut cpu = CPU::new(max_memory_cells);
         cpu.execute(program);
         let state = cpu.state.clone();
 
@@ -86,7 +88,6 @@ pub fn superoptimize(
             .zip(state.iter())
             .all(|(target_value, state_value)| target_value == state_value);
 
-        cpu.reset();
         result
     };
 
