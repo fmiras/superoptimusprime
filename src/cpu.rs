@@ -1,15 +1,38 @@
+use strum::EnumIter;
+
 use crate::operations::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, EnumIter)]
 pub enum Instruction {
-    Load(i32),
+    Load(usize),
     Swap(usize, usize),
     Xor(usize, usize),
     Inc(usize),
 }
+
+impl Instruction {
+    pub fn operation(&self) -> String {
+        match self {
+            Instruction::Load(_) => String::from("LOAD"),
+            Instruction::Swap(_, _) => String::from("SWAP"),
+            Instruction::Xor(_, _) => String::from("XOR"),
+            Instruction::Inc(_) => String::from("INC"),
+        }
+    }
+
+    pub fn arguments(&self) -> Vec<usize> {
+        match self {
+            Instruction::Load(value) => vec![*value],
+            Instruction::Swap(memory1, memory2) => vec![*memory1, *memory2],
+            Instruction::Xor(memory1, memory2) => vec![*memory1, *memory2],
+            Instruction::Inc(memory) => vec![*memory],
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CPU {
-    pub state: Vec<i32>,
+    pub state: Vec<usize>,
 }
 
 impl CPU {

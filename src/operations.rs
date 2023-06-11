@@ -1,18 +1,18 @@
-pub fn load(state: &mut Vec<i32>, value: i32) {
+pub fn load(state: &mut Vec<usize>, value: usize) {
     state[0] = value;
 }
 
-pub fn swap(state: &mut Vec<i32>, memory1: usize, memory2: usize) {
+pub fn swap(state: &mut Vec<usize>, memory1: usize, memory2: usize) {
     let temp = state[memory1];
     state[memory1] = state[memory2];
     state[memory2] = temp;
 }
 
-pub fn xor(state: &mut Vec<i32>, memory1: usize, memory2: usize) {
+pub fn xor(state: &mut Vec<usize>, memory1: usize, memory2: usize) {
     state[memory1] ^= state[memory2];
 }
 
-pub fn inc(state: &mut Vec<i32>, memory: usize) {
+pub fn inc(state: &mut Vec<usize>, memory: usize) {
     state[memory] += 1;
 }
 

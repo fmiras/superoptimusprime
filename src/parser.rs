@@ -45,7 +45,7 @@ impl FromStr for Instruction {
             .collect::<Result<Vec<usize>, ParseError>>()?;
 
         match op_str {
-            "LOAD" => Ok(Instruction::Load(args[0] as i32)),
+            "LOAD" => Ok(Instruction::Load(args[0])),
             "SWAP" => Ok(Instruction::Swap(args[0], args[1])),
             "XOR" => Ok(Instruction::Xor(args[0], args[1])),
             "INC" => Ok(Instruction::Inc(args[0])),
