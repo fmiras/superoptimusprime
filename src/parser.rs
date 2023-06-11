@@ -3,7 +3,7 @@ use std::fmt;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use crate::cpu::Operation;
+use crate::cpu::Instruction;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
@@ -19,7 +19,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-impl FromStr for Operation {
+impl FromStr for Instruction {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -45,34 +45,34 @@ impl FromStr for Operation {
             .collect::<Result<Vec<usize>, ParseError>>()?;
 
         match op_str {
-            "LOAD" => Ok(Operation::Load(args[0])),
-            "SWAP" => Ok(Operation::Swap(args[0], args[1])),
-            "XOR" => Ok(Operation::Xor(args[0], args[1])),
-            "INC" => Ok(Operation::Inc(args[0])),
+            "LOAD" => Ok(Instruction::Load(args[0] as i32)),
+            "SWAP" => Ok(Instruction::Swap(args[0], args[1])),
+            "XOR" => Ok(Instruction::Xor(args[0], args[1])),
+            "INC" => Ok(Instruction::Inc(args[0])),
             _ => Err(ParseError::InvalidOp),
         }
     }
 }
 
-impl fmt::Display for Operation {
+impl fmt::Display for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Operation::Load(val) => write!(f, "LOAD {}", val),
-            Operation::Swap(mem1, mem2) => write!(f, "SWAP {}, {}", mem1, mem2),
-            Operation::Xor(mem1, mem2) => write!(f, "XOR {}, {}", mem1, mem2),
-            Operation::Inc(mem) => write!(f, "INC {}", mem),
+            Instruction::Load(val) => write!(f, "LOAD {}", val),
+            Instruction::Swap(mem1, mem2) => write!(f, "SWAP {}, {}", mem1, mem2),
+            Instruction::Xor(mem1, mem2) => write!(f, "XOR {}, {}", mem1, mem2),
+            Instruction::Inc(mem) => write!(f, "INC {}", mem),
         }
     }
 }
 
-pub fn parse(assembly: &str) -> Result<Vec<Operation>, ParseError> {
+pub fn parse(assembly: &str) -> Result<Vec<Instruction>, ParseError> {
     assembly
         .lines()
-        .map(|line| line.parse::<Operation>())
-        .collect::<Result<Vec<Operation>, ParseError>>()
+        .map(|line| line.parse::<Instruction>())
+        .collect::<Result<Vec<Instruction>, ParseError>>()
 }
 
-pub fn output(program: &Vec<Operation>) -> String {
+pub fn output(program: &Vec<Instruction>) -> String {
     program
         .iter()
         .map(|op| op.to_string())
@@ -86,14 +86,14 @@ mod tests {
 
     #[test]
     fn from_str_valid_operation() {
-        let op = "LOAD 0".parse::<Operation>();
+        let op = "LOAD 0".parse::<Instruction>();
         assert!(op.is_ok());
-        assert_eq!(op.unwrap(), Operation::Load(0));
+        assert_eq!(op.unwrap(), Instruction::Load(0));
     }
 
     #[test]
     fn from_str_invalid_operation() {
-        let op = "INVALID 1".parse::<Operation>();
+        let op = "INVALID 1".parse::<Instruction>();
         assert!(op.is_err());
         let error = op.unwrap_err();
         assert_eq!(error, ParseError::InvalidOp);
@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn from_str_no_args_operation() {
-        let op = "INC".parse::<Operation>();
+        let op = "INC".parse::<Instruction>();
         assert!(op.is_err());
         let error = op.unwrap_err();
         assert_eq!(error, ParseError::NoArgs);
@@ -114,10 +114,10 @@ mod tests {
         assert!(result.is_ok());
         let parsed = result.unwrap();
         let expected = vec![
-            Operation::Load(0),
-            Operation::Swap(1, 2),
-            Operation::Xor(3, 4),
-            Operation::Inc(5),
+            Instruction::Load(0),
+            Instruction::Swap(1, 2),
+            Instruction::Xor(3, 4),
+            Instruction::Inc(5),
         ];
         assert!(parsed.iter().all(|op| expected.contains(op)));
     }
@@ -134,10 +134,10 @@ mod tests {
     #[test]
     fn can_output() {
         let program = vec![
-            Operation::Load(0),
-            Operation::Swap(1, 2),
-            Operation::Xor(3, 4),
-            Operation::Inc(5),
+            Instruction::Load(0),
+            Instruction::Swap(1, 2),
+            Instruction::Xor(3, 4),
+            Instruction::Inc(5),
         ];
         let output = output(&program);
         let expected = "LOAD 0\nSWAP 1, 2\nXOR 3, 4\nINC 5";
