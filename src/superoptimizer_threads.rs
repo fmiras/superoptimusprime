@@ -1,8 +1,9 @@
+use strum::IntoEnumIterator;
+use threadpool::ThreadPool;
+
 use crate::cpu::CPU;
 use crate::{cpu::Instruction, iters::product};
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
-use strum::IntoEnumIterator;
+use std::sync::{mpsc, Arc};
 
 pub fn generate_and_search_programs(
     max_instructions_length: usize,
@@ -10,89 +11,63 @@ pub fn generate_and_search_programs(
     max_value: usize,
     target_state: &Vec<usize>,
 ) -> Option<Vec<Instruction>> {
-    let result = Arc::new(Mutex::new(None));
-    let cvar = Arc::new(Condvar::new());
+    let (sender, receiver) = mpsc::channel();
+    let pool = ThreadPool::new(8);
 
-    let mut handles = vec![];
+    let target_state = Arc::new(target_state.clone());
 
     for instructions_length in 1..=max_instructions_length {
-        let operations = Instruction::iter()
-            .map(|instruction| instruction.operation())
+        let operations: Vec<String> = Instruction::iter()
+            .map(|instruction: Instruction| instruction.operation())
             .collect();
 
-        let result = Arc::clone(&result);
-        let cvar = Arc::clone(&cvar);
+        let possible_instructions = operations
+            .into_iter()
+            .flat_map(|operation| match operation.as_str() {
+                "LOAD" => (0..max_value)
+                    .map(|value| Instruction::Load(value))
+                    .collect::<Vec<_>>(),
+                "SWAP" => product(&(0..max_memory_cells).collect::<Vec<_>>(), 2)
+                    .iter()
+                    .map(|cells| Instruction::Swap(cells[0], cells[1]))
+                    .collect::<Vec<_>>(),
+                "XOR" => product(&(0..max_memory_cells).collect::<Vec<_>>(), 2)
+                    .iter()
+                    .map(|cells| Instruction::Xor(cells[0], cells[1]))
+                    .collect::<Vec<_>>(),
+                "INC" => (0..max_memory_cells)
+                    .map(|cell| Instruction::Inc(cell))
+                    .collect::<Vec<_>>(),
+                _ => panic!("Unknown operation: {}", operation),
+            })
+            .collect::<Vec<_>>();
 
-        let target_state = target_state.clone();
+        let sender = mpsc::Sender::clone(&sender);
+        let target_state = Arc::clone(&target_state);
 
-        let handle = thread::spawn(move || {
-            for operation_combination in product(&operations, instructions_length) {
-                let mut possible_instructions = Vec::new();
+        pool.execute(move || {
+            for instruction_combination in product(&possible_instructions, instructions_length) {
+                let mut cpu = CPU::new(max_memory_cells);
+                cpu.execute(&instruction_combination);
+                let state = cpu.state.clone();
 
-                for operation in operation_combination {
-                    match operation.as_str() {
-                        "LOAD" => {
-                            for value in 0..max_value {
-                                possible_instructions.push(Instruction::Load(value));
-                            }
-                        }
-                        "SWAP" => {
-                            for cell1 in 0..max_memory_cells {
-                                for cell2 in 0..max_memory_cells {
-                                    possible_instructions.push(Instruction::Swap(cell1, cell2));
-                                }
-                            }
-                        }
-                        "XOR" => {
-                            for cell in 0..max_memory_cells {
-                                for cell2 in 0..max_memory_cells {
-                                    possible_instructions.push(Instruction::Xor(cell, cell2));
-                                }
-                            }
-                        }
-                        "INC" => {
-                            for cell in 0..max_memory_cells {
-                                possible_instructions.push(Instruction::Inc(cell));
-                            }
-                        }
-                        _ => panic!("Unknown operation: {}", operation),
-                    }
-                }
+                // check if the state is deep equal to the target state
+                let program_found = target_state
+                    .iter()
+                    .zip(state.iter())
+                    .all(|(target_value, state_value)| target_value == state_value);
 
-                for instruction_combination in product(&possible_instructions, instructions_length)
-                {
-                    let mut cpu = CPU::new(max_memory_cells);
-                    cpu.execute(&instruction_combination);
-                    let state = cpu.state.clone();
-
-                    // check if the state is deep equal to the target state
-                    let program_found = target_state
-                        .iter()
-                        .zip(state.iter())
-                        .all(|(target_value, state_value)| target_value == state_value);
-
-                    if program_found {
-                        let mut result = result.lock().unwrap();
-                        *result = Some(instruction_combination);
-
-                        cvar.notify_all();
-                        return;
-                    }
+                if program_found {
+                    sender.send(instruction_combination).unwrap();
+                    return;
                 }
             }
         });
-
-        handles.push(handle);
     }
 
-    // Wait for all threads to complete
-    for handle in handles {
-        handle.join().unwrap();
-    }
+    pool.join();
 
-    let result = result.lock().unwrap();
-
-    result.clone()
+    receiver.iter().find_map(|res| Some(res))
 }
 
 pub fn superoptimize(
