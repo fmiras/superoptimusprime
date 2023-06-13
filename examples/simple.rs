@@ -1,8 +1,4 @@
-mod cpu;
-mod iters;
-mod operations;
-mod parser;
-mod superoptimizer_rayon;
+use superoptimusprime::{cpu, parser, superoptimizer};
 
 fn main() {
     let assembly = "LOAD 3
@@ -17,7 +13,7 @@ LOAD 3
     println!("🤖 Assembly program:");
     println!("{}", assembly);
 
-    let max_memory_cells = 4;
+    let max_memory_cells = 6;
 
     let program = parser::parse(assembly).unwrap();
     let mut cpu = cpu::CPU::new(max_memory_cells);
@@ -29,7 +25,7 @@ LOAD 3
     // measure execution duration
     let start = std::time::Instant::now();
     let superoptimized_program =
-        superoptimizer_rayon::superoptimize(4, max_memory_cells, 5, &target_state);
+        superoptimizer::superoptimize(4, max_memory_cells, 5, &target_state);
     let end = std::time::Instant::now();
 
     println!("⏱️ Execution duration: {:?}", end - start);
